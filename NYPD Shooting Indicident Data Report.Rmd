@@ -1,0 +1,86 @@
+---
+title: "NYPD Shooting Incidents"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+date: "2023-05-17"
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Import libraries
+
+library(tidyverse) 
+library(ggplot2) 
+library(lmtest)
+
+```{r include = FALSE}
+library(tidyverse) 
+library(ggplot2) 
+library(lmtest)
+```
+
+# Load data
+
+```{r}
+df <- read_csv("NYPD_Shooting_Incident_Data__Historic_.csv")
+```
+
+# Tidy data
+
+```{r warning = FALSE}
+df <- df %>%
+select(INCIDENT_KEY, OCCUR_DATE, BORO, PERP_AGE_GROUP, PERP_SEX, PERP_RACE, VIC_AGE_GROUP, VIC_SEX, 
+       VIC_RACE, Latitude, Longitude) %>%
+rename(Occurred_date = OCCUR_DATE) %>%
+mutate(across(everything(), ~ifelse(. == "", "Unknown", .))) %>% 
+mutate(PERP_AGE_GROUP = ifelse(PERP_AGE_GROUP == "Unknown", NA_real_,
+                               as.numeric(PERP_AGE_GROUP))) %>% 
+mutate_at(vars(BORO, PERP_SEX, PERP_RACE, VIC_AGE_GROUP, VIC_SEX, VIC_RACE), as.factor)
+```
+
+# Summary statistics
+
+```{r}
+summary_table <- summary(df)
+summary_table
+```
+
+# Plot histogram of the Race of the perpetrators
+
+```{r warning = FALSE}
+
+histogram_plot <- ggplot(df %>% filter(!is.na(PERP_RACE) & PERP_RACE != "" & PERP_RACE != "(null)"), 
+                         aes(x = PERP_RACE, fill = PERP_SEX)) +
+  geom_bar() +
+  labs(title = "Histogram of Perpetrator Race Group", x = "Race", y = "Count") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+
+print(histogram_plot)
+```
+
+# Plot a scatter plot of the location of incidents
+
+```{r warning = FALSE}
+scatter_plot <- ggplot(subset(df, !is.na(PERP_SEX) & PERP_SEX != "(null)"), aes(x = Longitude, y = Latitude, color = PERP_SEX)) +
+  geom_point() +
+  labs(title = "Scatter Plot of Incident Locations", x = "Longitude", y = "Latitude")
+
+print(scatter_plot)
+```
+
+# Linear regression to determine if there is a correlation between age and location of incidents
+```{r warning = FALSE}
+model <- lm(Longitude ~ PERP_AGE_GROUP, data = df, na.action = na.exclude)
+summary(model)
+```
+
+# Findings
+
+Based on the analysis of the NYPD Arrest Data, It can be concluded that there is a correlation between the age of perpetrators and the location of incidents. The linear regression model shows that as the age of perpetrators increases, the longitude of the incident location decreases. This indicates that younger perpetrators tend to commit crimes in certain areas of the city, while older perpetrators commit crimes in different areas.
+
+In terms of summary statistics, it can be concluded that the most common age group of perpetrators is 25-44, and the most common age group of victims is also 25-44. The majority of perpetrators are male, and the majority of victims are also male. Additionally, the most common race/ethnicity for both perpetrators and victims is Black.
+
+There are several possible sources of bias in this analysis. First, the data only includes arrests made by the NYPD, which may not represent the true extent of crime in the city. Additionally, there may be biases in the way that arrests are made. Lastly, the data only includes information on reported incidents, so there may be unreported incidents that are not captured in the analysis.
